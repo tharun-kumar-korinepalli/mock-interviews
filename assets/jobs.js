@@ -1,5 +1,5 @@
 // The seven open roles. Each role has its own interview weekend, two weeks apart
-// (the weekend of 26-27 Dec is skipped for Christmas).
+// No interviews from 15 Dec 2026 to 23 Jan 2027 (holiday) or on Easter weekend 2027.
 window.MI_JOBS = [
   {
     slug: "ai-engineer",
@@ -118,8 +118,8 @@ window.MI_JOBS = [
     workModel: "Hybrid",
     type: "Full time, permanent",
     level: "Junior to mid level",
-    interviewDays: ["2027-01-09", "2027-01-10"],
-    applyBy: "2027-01-06",
+    interviewDays: ["2027-01-30", "2027-01-31"],
+    applyBy: "2027-01-27",
     summary: "Keep our RAG assistant correct, fast and affordable for 200,000 daily users, with measurements behind every decision.",
     team: [
       "Our LLM Platform team runs a knowledge assistant for companies. About 400 business customers use it, and on a normal workday around 200,000 people ask it questions about their own documents. Many customers are in regulated industries, so next to API models we also host open-weight models ourselves in EU data centers."
@@ -171,8 +171,8 @@ window.MI_JOBS = [
     workModel: "On site 3 days a week",
     type: "Full time, permanent",
     level: "Junior to mid level",
-    interviewDays: ["2027-01-23", "2027-01-24"],
-    applyBy: "2027-01-20",
+    interviewDays: ["2027-02-13", "2027-02-14"],
+    applyBy: "2027-02-10",
     summary: "Design, train and debug neural networks on images, sensor signals and time series on our own GPU cluster.",
     team: [
       "Our Applied AI Research team trains its own neural networks on images, sensor signals and time series from industrial machines. We have an in-house GPU cluster run with Slurm, and we ship models into products, not only into papers."
@@ -225,8 +225,8 @@ window.MI_JOBS = [
     workModel: "Hybrid",
     type: "Full time, permanent",
     level: "Junior to mid level",
-    interviewDays: ["2027-02-06", "2027-02-07"],
-    applyBy: "2027-02-03",
+    interviewDays: ["2027-02-27", "2027-02-28"],
+    applyBy: "2027-02-24",
     summary: "Build forecasting, optimization and experimentation models that decide what we buy, where we store it and what we charge.",
     team: [
       "Our Applied Science team works on an online retail and logistics platform that sells several hundred thousand articles. Machine learning and mathematical optimization decide how much stock we buy, where we store it and what we charge. A one percent error in a forecast here costs real money."
@@ -275,8 +275,8 @@ window.MI_JOBS = [
     workModel: "Hybrid",
     type: "Full time, permanent",
     level: "Junior to mid level",
-    interviewDays: ["2027-02-20", "2027-02-21"],
-    applyBy: "2027-02-17",
+    interviewDays: ["2027-03-13", "2027-03-14"],
+    applyBy: "2027-03-10",
     summary: "Build AI agents that use tools safely across IT, purchasing, service and engineering, and that we can measure and roll back.",
     team: [
       "Our Central AI team builds AI agents that help colleagues in IT, purchasing, after-sales service and engineering get routine work done. Our agents read documents, call internal systems and hand results back to people for approval."
@@ -327,8 +327,8 @@ window.MI_JOBS = [
     workModel: "Hybrid",
     type: "Full time, permanent",
     level: "Junior to mid level",
-    interviewDays: ["2027-03-06", "2027-03-07"],
-    applyBy: "2027-03-03",
+    interviewDays: ["2027-04-10", "2027-04-11"],
+    applyBy: "2027-04-07",
     summary: "Build the shared paths that take a model from a notebook to a monitored service, for 15 ML and LLM teams.",
     team: [
       "Our ML Platform team serves 15 product teams that build ML and LLM features. We give all of them shared tools to train, deploy and monitor models, so no team has to build its own setup from scratch."
