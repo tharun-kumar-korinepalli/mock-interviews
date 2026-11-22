@@ -9,7 +9,6 @@
 //   GITHUB_REPO              e.g. mock-interviews-data
 //   ALLOWED_ORIGIN           e.g. https://tharun-kumar-korinepalli.github.io
 //   MAIL_URL                 Google Apps Script web app URL (optional, sends the emails)
-//   MAIL_SECRET    (secret)  shared secret printed by setup() in the Apps Script (optional)
 //
 // The ROLES and SETTINGS blocks below are generated from assets/jobs.js and assets/config.js
 // by build-worker.js. Do not edit them by hand.
@@ -344,7 +343,8 @@ async function handleApply(request, env, origin, ctx) {
         return json({ ok: false, error: "You have already applied for this position with this email address. Write to " + SETTINGS.contactEmail + " if you need to change your booking." }, 400, origin);
       }
     }
-    bookings[slot] = { id: a.id, role: role.slug, name: a.firstName + " " + a.lastName, email: a.email, folder, bookedAt: a.submittedAt };
+    bookings[slot] = { id: a.id, role: role.slug, name: a.firstName + " " + a.lastName, email: a.email, folder, bookedAt: a.submittedAt,
+      salutation: a.salutation, title: a.title, firstName: a.firstName, lastName: a.lastName, program: a.program, university: a.university };
 
     const files = [
       { path: folder + "/application.json", content: b64FromText(JSON.stringify(a, null, 2)) },
@@ -379,12 +379,10 @@ async function handleApply(request, env, origin, ctx) {
         labels: [role.slug]
       }) }).catch(() => null);
       // Emails (application received + interview confirmation) via Google Apps Script, if configured.
-      if (env.MAIL_URL && env.MAIL_SECRET) {
-        const mail = fetch(env.MAIL_URL, { method: "POST", headers: { "content-type": "application/json" }, redirect: "follow", body: JSON.stringify({
-          secret: env.MAIL_SECRET, id: a.id, role: role.slug, roleTitle: role.title, slotDate: a.slotDate, slotTime: a.slotTime,
-          salutation: a.salutation, title: a.title, firstName: a.firstName, lastName: a.lastName, email: a.email, phone: a.phone,
-          program: a.program, university: a.university, submittedAt: a.submittedAt, folderUrl: link
-        }) }).catch(e => console.log("mail failed", e));
+      // The mailer only gets the reference and email, then checks them with GET /verify before sending.
+      if (env.MAIL_URL) {
+        const mail = fetch(env.MAIL_URL, { method: "POST", headers: { "content-type": "application/json" }, redirect: "follow",
+          body: JSON.stringify({ id: a.id, email: a.email }) }).catch(e => console.log("mail failed", e));
         if (ctx && ctx.waitUntil) ctx.waitUntil(mail); else await mail;
       }
       return json({ ok: true, id: a.id }, 200, origin);
@@ -392,6 +390,26 @@ async function handleApply(request, env, origin, ctx) {
     if (upd.status !== 422 && upd.status !== 409) throw new Error("ref update failed " + upd.status);
   }
   return json({ ok: false, error: "The server was busy. Please submit again." }, 503, origin);
+}
+
+// Used by the Google Apps Script mailer: returns booking details only for a matching reference + email.
+async function handleVerify(url, env) {
+  const id = url.searchParams.get("id") || "", email = (url.searchParams.get("email") || "").toLowerCase();
+  if (!/^MI-\d{6}-[0-9A-F]{6}$/.test(id) || !email) return json({ ok: false }, 404);
+  const bookings = await readBookings(env, BRANCH);
+  for (const slot in bookings) {
+    const b = bookings[slot];
+    if (b.id !== id || b.email !== email) continue;
+    const role = ROLES[b.role];
+    const m = /\|(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/.exec(slot);
+    return json({ ok: true, data: {
+      id: b.id, email: b.email, role: b.role, roleTitle: role ? role.title : b.role, slotDate: m[1], slotTime: m[2],
+      salutation: b.salutation || "", title: b.title || "", firstName: b.firstName || b.name, lastName: b.lastName || "",
+      program: b.program || "", university: b.university || "", submittedAt: b.bookedAt,
+      folderUrl: "https://github.com/" + env.GITHUB_OWNER + "/" + env.GITHUB_REPO + "/tree/" + BRANCH + "/" + b.folder
+    } });
+  }
+  return json({ ok: false }, 404);
 }
 
 async function handleSlots(url, env, origin) {
@@ -420,6 +438,7 @@ export default {
     }
     try {
       if (request.method === "GET" && url.pathname === "/slots") return await handleSlots(url, env, origin);
+      if (request.method === "GET" && url.pathname === "/verify") return await handleVerify(url, env);
       if (request.method === "POST" && url.pathname === "/apply") {
         if (allowed.length && allowed.indexOf(reqOrigin) < 0) return json({ ok: false, error: "Forbidden." }, 403, origin);
         return await handleApply(request, env, origin, ctx);
