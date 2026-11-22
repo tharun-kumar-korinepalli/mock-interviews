@@ -8,6 +8,8 @@
 //   GITHUB_OWNER             e.g. tharun-kumar-korinepalli
 //   GITHUB_REPO              e.g. mock-interviews-data
 //   ALLOWED_ORIGIN           e.g. https://tharun-kumar-korinepalli.github.io
+//   MAIL_URL                 Google Apps Script web app URL (optional, sends the emails)
+//   MAIL_SECRET    (secret)  shared secret printed by setup() in the Apps Script (optional)
 //
 // The ROLES and SETTINGS blocks below are generated from assets/jobs.js and assets/config.js
 // by build-worker.js. Do not edit them by hand.
@@ -138,7 +140,7 @@ function markdown(a, role) {
   return L.join("\n");
 }
 
-async function handleApply(request, env, origin) {
+async function handleApply(request, env, origin, ctx) {
   const ip = request.headers.get("cf-connecting-ip") || "unknown";
   const now = Date.now();
   const hits = (recent.get(ip) || []).filter(t => now - t < 10 * 60 * 1000);
@@ -266,6 +268,15 @@ async function handleApply(request, env, origin) {
           "\n**Phone:** " + a.phone + "\n**Program:** " + a.program + ", " + a.university + "\n\nFull application, CV and cover letter: " + link,
         labels: [role.slug]
       }) }).catch(() => null);
+      // Emails (application received + interview confirmation) via Google Apps Script, if configured.
+      if (env.MAIL_URL && env.MAIL_SECRET) {
+        const mail = fetch(env.MAIL_URL, { method: "POST", headers: { "content-type": "application/json" }, redirect: "follow", body: JSON.stringify({
+          secret: env.MAIL_SECRET, id: a.id, role: role.slug, roleTitle: role.title, slotDate: a.slotDate, slotTime: a.slotTime,
+          salutation: a.salutation, title: a.title, firstName: a.firstName, lastName: a.lastName, email: a.email, phone: a.phone,
+          program: a.program, university: a.university, submittedAt: a.submittedAt, folderUrl: link
+        }) }).catch(e => console.log("mail failed", e));
+        if (ctx && ctx.waitUntil) ctx.waitUntil(mail); else await mail;
+      }
       return json({ ok: true, id: a.id }, 200, origin);
     }
     if (upd.status !== 422 && upd.status !== 409) throw new Error("ref update failed " + upd.status);
@@ -282,7 +293,7 @@ async function handleSlots(url, env, origin) {
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const reqOrigin = request.headers.get("origin") || "";
     const allowed = (env.ALLOWED_ORIGIN || "").split(",").map(s => s.trim()).filter(Boolean);
@@ -301,7 +312,7 @@ export default {
       if (request.method === "GET" && url.pathname === "/slots") return await handleSlots(url, env, origin);
       if (request.method === "POST" && url.pathname === "/apply") {
         if (allowed.length && allowed.indexOf(reqOrigin) < 0) return json({ ok: false, error: "Forbidden." }, 403, origin);
-        return await handleApply(request, env, origin);
+        return await handleApply(request, env, origin, ctx);
       }
       if (url.pathname === "/" || url.pathname === "/health") return json({ ok: true, service: "Mock Interviews GmbH applications" }, 200, origin);
       return json({ ok: false, error: "Not found." }, 404, origin);
