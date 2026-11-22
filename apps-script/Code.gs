@@ -7,8 +7,10 @@
  *   3. about 30 minutes later, emails the student the "Mock Interview Confirmation"
  *      with the Zoom link and a calendar file
  *
- * Setup: run setup() once (it also installs a 5-minute timer for the delayed invites),
- * copy the MAIL_SECRET from the log into the Cloudflare Worker,
+ * Security: the Worker only sends a reference number and email address. This script then asks
+ * the Worker's /verify endpoint for the booking, so it only ever emails real applicants.
+ *
+ * Setup: run setup() once (it installs a 5-minute timer for the delayed invites),
  * then Deploy > New deployment > Web app (Execute as: Me, Who has access: Anyone).
  */
 
@@ -18,6 +20,7 @@ var CFG = {
   title: "CEO",
   ownerEmail: "korinetharunkumarpalli@gmail.com",
   careersUrl: "https://tharun-kumar-korinepalli.github.io/mock-interviews/",
+  apiUrl: "https://mock-interviews-api.korinetharunkumarpalli.workers.dev",
   timeZone: "Europe/Berlin",
   minutes: 45,
   inviteDelayMinutes: 30,
@@ -29,26 +32,31 @@ var CFG = {
 };
 
 function setup() {
-  var props = PropertiesService.getScriptProperties();
-  var secret = props.getProperty("MAIL_SECRET");
-  if (!secret) {
-    secret = Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
-    props.setProperty("MAIL_SECRET", secret);
-  }
-  // Touch Gmail and Calendar so Google asks for permission now.
+  // Touch Gmail, Calendar and the network so Google asks for all permissions now.
   GmailApp.getAliases();
   CalendarApp.getDefaultCalendar();
+  UrlFetchApp.fetch(CFG.apiUrl + "/health", { muteHttpExceptions: true });
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === "sendDueInvites"; });
   if (!has) ScriptApp.newTrigger("sendDueInvites").timeBased().everyMinutes(5).create();
-  Logger.log("MAIL_SECRET = " + secret);
+  Logger.log("Setup complete.");
+}
+
+function verify(id, email) {
+  for (var i = 0; i < 4; i++) {
+    var r = UrlFetchApp.fetch(CFG.apiUrl + "/verify?id=" + encodeURIComponent(id) + "&email=" + encodeURIComponent(email), { muteHttpExceptions: true });
+    if (r.getResponseCode() === 200) return JSON.parse(r.getContentText()).data;
+    Utilities.sleep(3000);
+  }
+  return null;
 }
 
 function doPost(e) {
   try {
-    var d = JSON.parse(e.postData.contents);
-    var secret = PropertiesService.getScriptProperties().getProperty("MAIL_SECRET");
-    if (!secret || d.secret !== secret) return out({ ok: false, error: "forbidden" });
-    if (d.test === true) return out({ ok: true, test: true });
+    var req = JSON.parse(e.postData.contents);
+    var props = PropertiesService.getScriptProperties();
+    if (!req.id || props.getProperty("DONE_" + req.id)) return out({ ok: true, skipped: true });
+    var d = verify(String(req.id), String(req.email || "").toLowerCase());
+    if (!d) return out({ ok: false, error: "unknown application" });
 
     var lock = LockService.getScriptLock();
     lock.waitLock(20000);
@@ -58,7 +66,8 @@ function doPost(e) {
       createEvent(d, start, end);
       sendReceived(d);
       d.sendInviteAt = Date.now() + CFG.inviteDelayMinutes * 60000;
-      PropertiesService.getScriptProperties().setProperty("Q_" + d.id, JSON.stringify(d));
+      props.setProperty("Q_" + d.id, JSON.stringify(d));
+      props.setProperty("DONE_" + d.id, String(Date.now()));
     } finally {
       lock.releaseLock();
     }
@@ -119,7 +128,7 @@ function sendDueInvites() {
 /** Adds the interview to Tharun's own calendar. No email is sent to the student from here. */
 function createEvent(d, start, end) {
   var title = "Mock Interview: " + d.firstName + " " + d.lastName + " (" + d.roleTitle + ")";
-  var desc = "Reference: " + d.id + "\nCandidate: " + d.firstName + " " + d.lastName + " <" + d.email + ">\nPhone: " + d.phone +
+ var desc = "Reference: " + d.id + "\nCandidate: " + d.firstName + " " + d.lastName + " <" + d.email + ">" +
     "\nProgram: " + d.program + ", " + d.university + "\n\nZoom: " + CFG.zoom.url + "\nApplication on GitHub: " + d.folderUrl;
   CalendarApp.getDefaultCalendar().createEvent(title, start, end, { description: desc, location: CFG.zoom.url });
 }
@@ -180,7 +189,7 @@ function sendInterview(d, start, end) {
     '<li>Read the job description again: <a href="' + CFG.careersUrl + 'job.html?role=' + encodeURIComponent(d.role) + '" style="color:#0b3d91">' + esc(d.roleTitle) + '</a>.</li>' +
     '<li>Be ready to walk through one project from your CV in detail.</li>' +
     '<li>Expect questions on the fundamentals of the role and one practical case.</li>' +
-    '<li>Join the Zoom meeting 5 minutes early with a working camera and microphone. You may wait briefly in the waiting room.</li></ul>',
+    '<li>Join the Zoom meeting exactly at your start time, not earlier, because the interview before yours may still be running. Please test your camera and microphone beforehand.</li></ul>',
     p("A calendar file is attached. If you cannot attend, please reply to this email at least 48 hours before the interview.")
   ].join(""));
   var ics = Utilities.newBlob(icsText(d, start, end), "text/calendar", "mock-interview.ics");
