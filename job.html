@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job | Mock Interviews GmbH</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b3d91'/%3E%3Ctext x='16' y='21' font-family='Arial' font-weight='800' font-size='13' fill='white' text-anchor='middle'%3EMI%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html">
+        <span class="logo-mark">MI</span>
+        <span class="logo-text">Mock Interviews GmbH<small>Careers</small></span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#jobs">All positions</a>
+        <a href="index.html#process">Hiring process</a>
+        <a class="btn" href="#apply">Apply now</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="job-root"></main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="cols">
+        <div class="note">
+          <div class="logo" style="color:#fff;margin-bottom:10px"><span class="logo-mark">MI</span><span>Mock Interviews GmbH</span></div>
+          A training simulation for AI master's students. Not a real employer.
+        </div>
+        <div>
+          <a href="index.html#jobs">Open positions</a><br>
+          <a href="privacy.html">Privacy notice</a><br>
+          <a href="imprint.html">Imprint</a>
+        </div>
+      </div>
+      <div class="legal">
+        <span>&copy; <span id="year"></span> Mock Interviews GmbH. CEO: Tharun Kumar Korine Palli.</span>
+        <span>All times shown in German time (Europe/Berlin).</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/jobs.js"></script>
+  <script src="assets/app.js"></script>
+  <script>MI.renderJob();</script>
+</body>
+</html>

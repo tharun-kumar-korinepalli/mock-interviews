@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Careers | Mock Interviews GmbH</title>
+  <meta name="description" content="Open AI and machine learning positions at Mock Interviews GmbH. Apply online and book your interview slot.">
+  <link rel="stylesheet" href="assets/styles.css">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b3d91'/%3E%3Ctext x='16' y='21' font-family='Arial' font-weight='800' font-size='13' fill='white' text-anchor='middle'%3EMI%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container">
+      <a class="logo" href="index.html">
+        <span class="logo-mark">MI</span>
+        <span class="logo-text">Mock Interviews GmbH<small>Careers</small></span>
+      </a>
+      <nav class="nav">
+        <a href="#jobs">Open positions</a>
+        <a href="#process">Hiring process</a>
+        <a href="#about">About us</a>
+        <a class="btn" href="#jobs">View jobs</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <div class="eyebrow">Careers in AI and machine learning</div>
+      <h1>Build AI systems that work outside the notebook.</h1>
+      <p>We are hiring engineers and scientists for computer vision, LLMs, deep learning, applied science, agents and ML platforms. Pick a role, apply online and book your interview slot in one go.</p>
+      <a class="btn" href="#jobs">See open positions</a>
+      <div class="hero-stats">
+        <div><strong id="stat-roles">7</strong>open positions</div>
+        <div><strong>5</strong>locations in Germany</div>
+        <div><strong>45 min</strong>one interview, one decision</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="jobs">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <h2>Open positions</h2>
+          <p>All roles are open to master's graduates. Your thesis and projects count as experience.</p>
+        </div>
+      </div>
+      <div class="filters">
+        <input id="q" type="search" placeholder="Search by title or skill, for example PyTorch" aria-label="Search jobs">
+        <select id="f-dept" aria-label="Filter by team"><option value="">All teams</option></select>
+        <select id="f-loc" aria-label="Filter by location"><option value="">All locations</option></select>
+      </div>
+      <div class="job-list" id="job-list"></div>
+    </div>
+  </section>
+
+  <section class="soft" id="process">
+    <div class="container">
+      <div class="section-head">
+        <div>
+          <h2>Our hiring process</h2>
+          <p>Short, clear and the same for every role.</p>
+        </div>
+      </div>
+      <div class="steps">
+        <div class="step"><div class="num">1</div><h3>Apply online</h3><p>Send your CV, cover letter and short answers to three role questions. Takes about 20 minutes.</p></div>
+        <div class="step"><div class="num">2</div><h3>Book your slot</h3><p>Each role has its own interview weekend. You choose a Saturday or Sunday slot while you apply.</p></div>
+        <div class="step"><div class="num">3</div><h3>Technical interview</h3><p>A 45 minute video interview with our CEO: your projects, the fundamentals for the role, and one practical case.</p></div>
+        <div class="step"><div class="num">4</div><h3>Feedback</h3><p>You get structured feedback on your CV, your answers and the interview, so you know what to improve.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="about">
+    <div class="container about-grid">
+      <div>
+        <h2>About Mock Interviews GmbH</h2>
+        <p>Mock Interviews GmbH runs realistic hiring for AI roles. Every job description on this page is built from real job ads that companies in Germany and Europe published in 2026. The skills, tools and questions are the ones employers ask for right now.</p>
+        <p>We hire for seven teams: Applied AI, Perception, LLM Platform, Applied AI Research, Applied Science, Central AI and ML Platform. Each team interviews on its own weekend, two weeks apart, so you can prepare for one role at a time.</p>
+        <p class="small">Mock Interviews GmbH is a training simulation for AI master's students. It is not a real employer and no employment contract results from an application. Your data is used only to run and evaluate your mock interview.</p>
+      </div>
+      <div class="leader">
+        <div class="avatar">TK</div>
+        <h3>Tharun Kumar Korine Palli</h3>
+        <div class="role">Chief Executive Officer and interviewer</div>
+        <p class="small">Tharun leads every interview himself. Questions about a role or your booking? Write to <a id="contact-link" href="#"></a>.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="cols">
+        <div class="note">
+          <div class="logo" style="color:#fff;margin-bottom:10px"><span class="logo-mark">MI</span><span>Mock Interviews GmbH</span></div>
+          A training simulation for AI master's students. Not a real employer.
+        </div>
+        <div>
+          <a href="index.html#jobs">Open positions</a><br>
+          <a href="privacy.html">Privacy notice</a><br>
+          <a href="imprint.html">Imprint</a>
+        </div>
+      </div>
+      <div class="legal">
+        <span>&copy; <span id="year"></span> Mock Interviews GmbH. CEO: Tharun Kumar Korine Palli.</span>
+        <span>All times shown in German time (Europe/Berlin).</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="assets/config.js"></script>
+  <script src="assets/jobs.js"></script>
+  <script src="assets/app.js"></script>
+  <script>MI.renderIndex();</script>
+</body>
+</html>
