@@ -371,7 +371,8 @@
       '<h2>Thank you, ' + esc(fd.get("firstName")) + '. Your application is in.</h2>' +
       '<p>We received your application for <strong>' + esc(job.title) + ' (m/f/d)</strong>.</p>' +
       '<p>Your interview: <strong>' + esc(fmtLong(p[0])) + ', ' + esc(p[1]) + ' to ' + esc(addMinutes(p[1], 45)) + '</strong> (German time) with ' + esc(C.interviewer) + '.</p>' +
-      '<p>Your reference number is <span class="ref">' + esc(id) + '</span>. Please keep it. The video link follows by email to ' + esc(fd.get("email")) + '.</p>' +
+      '<p>Your reference number is <span class="ref">' + esc(id) + '</span>. Please keep it.</p>' +
+      '<p>You will receive two emails at ' + esc(fd.get("email")) + ' an application confirmation right away, and about 30 minutes later your <strong>Mock Interview Confirmation</strong> with the Zoom link. Please also check your spam folder.</p>' +
       '<p style="margin-top:22px"><a class="btn" download="interview.ics" href="' + icsFor(job, slot) + '">Add to calendar</a> <a class="btn secondary" href="index.html#jobs">See other positions</a></p>' +
       '</div>';
     $("#apply-card").scrollIntoView({ behavior: "smooth", block: "start" });
