@@ -2,12 +2,13 @@
  * Mock Interviews GmbH - email sender (Google Apps Script, runs in Tharun's Google account)
  *
  * The Cloudflare Worker calls this web app after an application is saved. It then:
- *   1. emails the student "Application received"
- *   2. creates the interview in Tharun's Google Calendar with a Google Meet link
- *   3. emails the student "Mock Interview Confirmation" with the Meet link and a calendar file
- *   4. emails Tharun a short summary with a link to the application on GitHub
+ *   1. emails the student "Application received" right away
+ *   2. adds the interview to Tharun's Google Calendar (with the candidate's details)
+ *   3. about 30 minutes later, emails the student the "Mock Interview Confirmation"
+ *      with the Zoom link and a calendar file
  *
- * Setup: run setup() once, copy the MAIL_SECRET from the log into the Cloudflare Worker,
+ * Setup: run setup() once (it also installs a 5-minute timer for the delayed invites),
+ * copy the MAIL_SECRET from the log into the Cloudflare Worker,
  * then Deploy > New deployment > Web app (Execute as: Me, Who has access: Anyone).
  */
 
@@ -18,7 +19,13 @@ var CFG = {
   ownerEmail: "korinetharunkumarpalli@gmail.com",
   careersUrl: "https://tharun-kumar-korinepalli.github.io/mock-interviews/",
   timeZone: "Europe/Berlin",
-  minutes: 45
+  minutes: 45,
+  inviteDelayMinutes: 30,
+  zoom: {
+    url: "https://thws-de.zoom-x.de/j/69566964338",
+    meetingId: "695 6696 4338",
+    phone: "+49 69 3898 0596,,69566964338# (Germany)"
+  }
 };
 
 function setup() {
@@ -31,6 +38,8 @@ function setup() {
   // Touch Gmail and Calendar so Google asks for permission now.
   GmailApp.getAliases();
   CalendarApp.getDefaultCalendar();
+  var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === "sendDueInvites"; });
+  if (!has) ScriptApp.newTrigger("sendDueInvites").timeBased().everyMinutes(5).create();
   Logger.log("MAIL_SECRET = " + secret);
 }
 
@@ -46,11 +55,10 @@ function doPost(e) {
     try {
       var start = toDate(d.slotDate, d.slotTime);
       var end = new Date(start.getTime() + CFG.minutes * 60000);
-      var meet = createEvent(d, start, end);
-
+      createEvent(d, start, end);
       sendReceived(d);
-      sendInterview(d, start, end, meet);
-      notifyOwner(d, start, meet);
+      d.sendInviteAt = Date.now() + CFG.inviteDelayMinutes * 60000;
+      PropertiesService.getScriptProperties().setProperty("Q_" + d.id, JSON.stringify(d));
     } finally {
       lock.releaseLock();
     }
@@ -89,27 +97,31 @@ function greeting(d) {
   return "Dear " + d.firstName + " " + d.lastName + ",";
 }
 
-/** Creates the event in Tharun's calendar. Returns the Google Meet link, or "" if Meet is not available. */
+/** Runs every 5 minutes: sends interview invites whose 30-minute delay has passed. */
+function sendDueInvites() {
+  var props = PropertiesService.getScriptProperties();
+  var all = props.getProperties();
+  Object.keys(all).forEach(function (k) {
+    if (k.indexOf("Q_") !== 0) return;
+    var d = JSON.parse(all[k]);
+    if (d.sendInviteAt > Date.now()) return;
+    try {
+      var start = toDate(d.slotDate, d.slotTime);
+      var end = new Date(start.getTime() + CFG.minutes * 60000);
+      sendInterview(d, start, end);
+      props.deleteProperty(k);
+    } catch (e) {
+      console.error("invite failed for " + d.id + ": " + e);
+    }
+  });
+}
+
+/** Adds the interview to Tharun's own calendar. No email is sent to the student from here. */
 function createEvent(d, start, end) {
   var title = "Mock Interview: " + d.firstName + " " + d.lastName + " (" + d.roleTitle + ")";
   var desc = "Reference: " + d.id + "\nCandidate: " + d.firstName + " " + d.lastName + " <" + d.email + ">\nPhone: " + d.phone +
-    "\nProgram: " + d.program + ", " + d.university + "\n\nApplication on GitHub: " + d.folderUrl;
-  try {
-    // Needs the Advanced Calendar service (Services > Google Calendar API). Adds a Google Meet link.
-    var ev = Calendar.Events.insert({
-      summary: title,
-      description: desc,
-      start: { dateTime: start.toISOString(), timeZone: CFG.timeZone },
-      end: { dateTime: end.toISOString(), timeZone: CFG.timeZone },
-      conferenceData: { createRequest: { requestId: d.id, conferenceSolutionKey: { type: "hangoutsMeet" } } },
-      reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 30 }] }
-    }, "primary", { conferenceDataVersion: 1, sendUpdates: "none" });
-    return ev.hangoutLink || "";
-  } catch (e) {
-    console.warn("Advanced Calendar not available, using CalendarApp: " + e);
-    CalendarApp.getDefaultCalendar().createEvent(title, start, end, { description: desc });
-    return "";
-  }
+    "\nProgram: " + d.program + ", " + d.university + "\n\nZoom: " + CFG.zoom.url + "\nApplication on GitHub: " + d.folderUrl;
+  CalendarApp.getDefaultCalendar().createEvent(title, start, end, { description: desc, location: CFG.zoom.url });
 }
 
 function layout(heading, bodyHtml) {
@@ -141,20 +153,22 @@ function sendReceived(d) {
     p(esc(greeting(d))),
     p("Thank you for applying for the position of <b>" + esc(d.roleTitle) + "</b> at " + esc(CFG.company) + ". We have received your application and your documents."),
     table([["Position", esc(d.roleTitle)], ["Reference number", esc(d.id)], ["Submitted", esc(Utilities.formatDate(new Date(d.submittedAt), CFG.timeZone, "d MMMM yyyy, HH:mm"))]]),
-    p("Your interview details follow in a separate email titled <b>Mock Interview Confirmation</b>. Please keep your reference number for any questions."),
+    p("Your interview invitation with the Zoom link follows in a separate email titled <b>Mock Interview Confirmation</b> within the next hour. Please keep your reference number for any questions."),
     p("If you need to change your booking, reply to this email.")
   ].join(""));
   GmailApp.sendEmail(d.email, subject, stripHtml(html), { htmlBody: html, name: CFG.company, replyTo: CFG.ownerEmail });
 }
 
-function sendInterview(d, start, end, meet) {
+function sendInterview(d, start, end) {
   var subject = "Mock Interview Confirmation: " + d.roleTitle + ", " + fmtDay(start) + " at " + fmtTime(start);
   var rows = [
     ["Position", esc(d.roleTitle)],
     ["Date", esc(fmtDay(start))],
     ["Time", esc(fmtTime(start) + " to " + fmtTime(end) + " (German time)")],
     ["Interviewer", esc(CFG.ceo + ", " + CFG.title)],
-    ["Format", meet ? 'Google Meet: <a href="' + esc(meet) + '" style="color:#0b3d91">' + esc(meet) + '</a>' : "Video call. The link follows by email before the interview."],
+    ["Zoom link", '<a href="' + esc(CFG.zoom.url) + '" style="color:#0b3d91">' + esc(CFG.zoom.url) + '</a>'],
+    ["Meeting ID", esc(CFG.zoom.meetingId)],
+    ["Dial in", esc(CFG.zoom.phone)],
     ["Reference number", esc(d.id)]
   ];
   var html = layout("Mock Interview Confirmation", [
@@ -166,32 +180,16 @@ function sendInterview(d, start, end, meet) {
     '<li>Read the job description again: <a href="' + CFG.careersUrl + 'job.html?role=' + encodeURIComponent(d.role) + '" style="color:#0b3d91">' + esc(d.roleTitle) + '</a>.</li>' +
     '<li>Be ready to walk through one project from your CV in detail.</li>' +
     '<li>Expect questions on the fundamentals of the role and one practical case.</li>' +
-    '<li>Join 5 minutes early with a working camera and microphone.</li></ul>',
+    '<li>Join the Zoom meeting 5 minutes early with a working camera and microphone. You may wait briefly in the waiting room.</li></ul>',
     p("A calendar file is attached. If you cannot attend, please reply to this email at least 48 hours before the interview.")
   ].join(""));
-  var ics = Utilities.newBlob(icsText(d, start, end, meet), "text/calendar", "mock-interview.ics");
+  var ics = Utilities.newBlob(icsText(d, start, end), "text/calendar", "mock-interview.ics");
   GmailApp.sendEmail(d.email, subject, stripHtml(html), { htmlBody: html, name: CFG.company, replyTo: CFG.ownerEmail, attachments: [ics] });
 }
 
-function notifyOwner(d, start, meet) {
-  var subject = "New application: " + d.firstName + " " + d.lastName + " | " + d.roleTitle + " | " + fmtDay(start) + " " + fmtTime(start);
-  var html = layout("New application", table([
-    ["Candidate", esc(d.firstName + " " + d.lastName)],
-    ["Position", esc(d.roleTitle)],
-    ["Interview", esc(fmtDay(start) + ", " + fmtTime(start))],
-    ["Email", esc(d.email)],
-    ["Phone", esc(d.phone)],
-    ["Program", esc(d.program + ", " + d.university)],
-    ["Meet link", meet ? esc(meet) : "-"],
-    ["Reference", esc(d.id)],
-    ["Application, CV, cover letter", '<a href="' + esc(d.folderUrl) + '" style="color:#0b3d91">Open on GitHub</a>']
-  ]));
-  GmailApp.sendEmail(CFG.ownerEmail, subject, stripHtml(html), { htmlBody: html, name: CFG.company });
-}
-
-function icsText(d, start, end, meet) {
+function icsText(d, start, end) {
   function z(dt) { return Utilities.formatDate(dt, "UTC", "yyyyMMdd'T'HHmmss'Z'"); }
-  var desc = "Interview with " + CFG.ceo + " for " + d.roleTitle + ". Reference " + d.id + "." + (meet ? " Google Meet: " + meet : "");
+  var desc = "Interview with " + CFG.ceo + " for " + d.roleTitle + ". Reference " + d.id + ". Zoom: " + CFG.zoom.url + " (Meeting ID " + CFG.zoom.meetingId + ")";
   return [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Mock Interviews GmbH//Interviews//EN", "METHOD:PUBLISH",
     "BEGIN:VEVENT",
@@ -201,7 +199,7 @@ function icsText(d, start, end, meet) {
     "DTEND:" + z(end),
     "SUMMARY:Mock Interview: " + d.roleTitle + " (Mock Interviews GmbH)",
     "DESCRIPTION:" + desc.replace(/,/g, "\\,"),
-    meet ? "LOCATION:" + meet : "LOCATION:Video call",
+    "LOCATION:" + CFG.zoom.url,
     "BEGIN:VALARM", "TRIGGER:-PT30M", "ACTION:DISPLAY", "DESCRIPTION:Mock interview in 30 minutes", "END:VALARM",
     "END:VEVENT", "END:VCALENDAR"
   ].join("\r\n");
